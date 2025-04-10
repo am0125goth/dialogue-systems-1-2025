@@ -160,35 +160,6 @@ const dmMachine = setup({
             
         }
     }
-        
-        // assign(({event}) => {
-        // const updates: Partial<DMContext & { pendingEntities: string[] }> = {};
-        // if (event.type !== "RECOGNISED") return updates;
-        // const cluResult = event.nluValue;
-        // updates.intent = cluResult.topIntent
-        // if (getPerson(event.nluValue)) {
-        //     updates.person = cluResult.entities.person[0].text;
-        //   }
-          
-        //   if (cluResult.entities?.day?.[0]) {
-        //     updates.day = cluResult.entities.day[0].text;
-        //   }
-          
-        //   if (cluResult.entities?.time?.[0]) {
-        //     updates.time = cluResult.entities.time[0].text;
-        //   }
-          
-        //   return updates;
-        // },
-    
-    // "updatePendingEntities": assign(({context}) => {
-    //     const pending: string[] = [];
-    //     if (!context.person) pending.push("person");
-    //     if (!context.day) pending.push("day");
-    //     if (!context.time) pending.push("time");
-        
-    //     return { pendingEntities: pending };
-    // })
   }
 }).createMachine({
   /** specify the function for context */
@@ -419,13 +390,13 @@ const dmMachine = setup({
             states: {
                 gatherInfo: {
                     always: [
-                        {guard: ({ context }) => !!context.person,
-                        target: "information"},
                         {guard: ({context}) => !context.person,
                         target: "who"},
+                        {guard: ({ context }) => !context.information,
+                        target: "information"},
                     ] 
                 },
-                who:{
+                who:{ //for some reason it is better at identifying some of the names and not others -- Mickey and Elsa gets recognised the most
                     initial: "prompt",
                     states: {
                         prompt: {
@@ -439,22 +410,15 @@ const dmMachine = setup({
                         processing: {
                             entry: {type: "spst.listen"},
                             on: {RECOGNISED: {
-                                actions: ["extractEntities"]
+                                actions: ["extractEntities", assign({person: ({event}) => getPerson(event.nluValue)})]
                                 },
-                                LISTEN_COMPLETE: [
-                                    {
-                                    guard: ({context}) => PersonInformation[context.person] != null,
+                                LISTEN_COMPLETE: [{
                                     target: "#whoQueriesSystem.gatherInfo", 
                                     },
-                                    {target: "unknownPerson"}
                                 ],
                                 ASR_NOINPUT: {target: "NoInput"},
                             },
                         },
-                        unknownPerson: {
-                            entry: {type: "spst.speak", params: ({context}) => ({utterance: `I do not know anything about ${context.person}`})},
-                            on: {SPEAK_COMPLETE: "#Prepare"}
-                        }
                     },
                 },
                 information: {
